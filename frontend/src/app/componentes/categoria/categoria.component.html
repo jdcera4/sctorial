@@ -1,0 +1,14 @@
+<div>
+    <h2>Categorías</h2>
+    <input #nombre placeholder="Nombre de la Categoría" />
+    <button (click)="agregarCategoria(nombre.value)">Agregar Categoría</button>
+    
+    <ul>
+      <li *ngFor="let categoria of categorias">
+        {{ categoria.nombre }}
+        <button (click)="inactivarCategoria(categoria._id)">Inactivar</button>
+        <button (click)="eliminarCategoria(categoria._id)">Eliminar</button>
+      </li>
+    </ul>
+  </div>
+  
