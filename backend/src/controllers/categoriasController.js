@@ -1,61 +1,65 @@
 const Categoria = require('../models/Categoria');
 
-// Obtener todas las categorías
-exports.obtenerCategorias = async (req, res) => {
+// Agregar una nueva categoría, subcategoría o tema
+exports.agregar = async (req, res) => {
+  const { tipo, nombre, categoriaId, subcategoriaId } = req.body;
   try {
-    const categorias = await Categoria.find();
-    res.json(categorias);
+    if (tipo === 'Categoria') {
+      const nuevaCategoria = new Categoria({ nombre });
+      await nuevaCategoria.save();
+    } else if (tipo === 'Subcategoria') {
+      const categoria = await Categoria.findById(categoriaId);
+      categoria.subcategorias.push({ nombre });
+      await categoria.save();
+    } else if (tipo === 'Tema') {
+      const categoria = await Categoria.findById(categoriaId);
+      const subcategoria = categoria.subcategorias.id(subcategoriaId);
+      subcategoria.temas.push({ nombre });
+      await categoria.save();
+    }
+    res.status(200).send("Elemento agregado con éxito");
   } catch (error) {
-    res.status(500).json({ error: 'Error al obtener las categorías' });
+    res.status(500).send("Error al agregar el elemento");
   }
 };
 
-// Crear una nueva categoría
-exports.crearCategoria = async (req, res) => {
+// Inactivar un elemento
+exports.inactivar = async (req, res) => {
+  const { categoriaId, subcategoriaId, temaId } = req.body;
   try {
-    const categoria = new Categoria(req.body);
+    const categoria = await Categoria.findById(categoriaId);
+    if (temaId) {
+      const tema = categoria.subcategorias.id(subcategoriaId).temas.id(temaId);
+      tema.estado = 'Inactivo';
+    } else if (subcategoriaId) {
+      const subcategoria = categoria.subcategorias.id(subcategoriaId);
+      subcategoria.estado = 'Inactivo';
+    } else {
+      categoria.estado = 'Inactivo';
+    }
     await categoria.save();
-    res.status(201).json(categoria);
+    res.status(200).send("Elemento inactivado");
   } catch (error) {
-    res.status(400).json({ error: 'Error al crear la categoría' });
+    res.status(500).send("Error al inactivar el elemento");
   }
 };
 
-// Obtener una categoría por ID
-exports.obtenerCategoria = async (req, res) => {
+// Eliminar un elemento sin hijos
+exports.eliminar = async (req, res) => {
+  const { categoriaId, subcategoriaId, temaId } = req.body;
   try {
-    const categoria = await Categoria.findById(req.params.id);
-    if (!categoria) {
-      return res.status(404).json({ error: 'Categoría no encontrada' });
+    const categoria = await Categoria.findById(categoriaId);
+    if (temaId) {
+      categoria.subcategorias.id(subcategoriaId).temas.id(temaId).remove();
+    } else if (subcategoriaId) {
+      const subcategoria = categoria.subcategorias.id(subcategoriaId);
+      if (subcategoria.temas.length === 0) subcategoria.remove();
+    } else if (categoria.subcategorias.length === 0) {
+      await Categoria.findByIdAndDelete(categoriaId);
     }
-    res.json(categoria);
+    await categoria.save();
+    res.status(200).send("Elemento eliminado");
   } catch (error) {
-    res.status(500).json({ error: 'Error al obtener la categoría' });
-  }
-};
-
-// Actualizar una categoría por ID
-exports.actualizarCategoria = async (req, res) => {
-  try {
-    const categoria = await Categoria.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    if (!categoria) {
-      return res.status(404).json({ error: 'Categoría no encontrada' });
-    }
-    res.json(categoria);
-  } catch (error) {
-    res.status(400).json({ error: 'Error al actualizar la categoría' });
-  }
-};
-
-// Eliminar una categoría por ID
-exports.eliminarCategoria = async (req, res) => {
-  try {
-    const categoria = await Categoria.findByIdAndDelete(req.params.id);
-    if (!categoria) {
-      return res.status(404).json({ error: 'Categoría no encontrada' });
-    }
-    res.json({ message: 'Categoría eliminada' });
-  } catch (error) {
-    res.status(500).json({ error: 'Error al eliminar la categoría' });
+    res.status(500).send("Error al eliminar el elemento");
   }
 };
